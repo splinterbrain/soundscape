@@ -3,14 +3,28 @@
 <head>
     <!-- Everything inline for maximum possible loading speed -->
     <style type="text/css">
+        body{
+            margin:0px;
+            padding:0px;
+        }
         body.dark {
             background-color: black;
-            color: white;
+            color: white;            
+        }
+        
+        iframe{
+            width:0px;
+            height:0px;
+            border:0px;
+            outline:none;
+            margin:0px;
+            padding:0px;
+            position: absolute;
         }
 
         #image {
             display: block;
-            margin: 0px auto;
+            margin: 10px auto;
             opacity: 1;
             -webkit-transition: opacity 1s ease;
             -moz-transition: opacity 1s ease;
@@ -21,22 +35,27 @@
         }
 
         #settings {
-            background-color: blue;
+            background-color: #3411de;
             box-sizing: border-box;
             -webkit-box-sizing: border-box;
             -moz-box-sizing: border-box;
             position: absolute;
-            top: 0px;
+            top: -28px;
+            opacity:0.1;
             right: 5px;
-            background-color: blue;
+            background-color: #3411de;
             padding: 5px;
+            z-index:1000;
+            color:white;
+            font-family: Helvetica, sans-serif;
 
-            -webkit-transition: top 0.5s ease;
-            -moz-transition: top 0.5s ease;
+            -webkit-transition: all 0.5s ease;
+            -moz-transition: all 0.5s ease;
         }
 
         #settings:hover, #settings.focused {
             top: 0px;
+            opacity: 1;
         }
 
         #settings:after {
@@ -47,11 +66,11 @@
             -webkit-box-sizing: border-box;
             -moz-box-sizing: border-box;
 
-            bottom: -24px;
+            bottom: -14px;
             right: -1px;
-            width: 24px;
-            height: 24px;
-            background-color: blue;
+            width: 34px;
+            height: 14px;
+            background-color: #3411de;
             border: 1px solid white;
             border-top: 0px;
             border-bottom-left-radius: 6px;
@@ -60,6 +79,15 @@
 
         #settings > label {
             margin: 5px;
+        }
+        
+        input{
+            width:80px;
+            font-family: monospace;
+            line-height: 1em;
+            outline:none;
+            border:0px;
+            padding:2px;
         }
 
 
@@ -72,7 +100,7 @@
     <label for="photoId">Photo</label>
     <input type="text" id="photoId"/>
 </section>
-<iframe id="player"></iframe>
+<div id="player"></div>
 <img id="image" class="loading">
 <script type="text/javascript" src="jquery.1.8.1.min.js">
 </script>
@@ -89,67 +117,76 @@
     window.onhashchange = function () {
         console.log("hash " + location.hash);
         var vals = location.hash.substring(1).split(",");
-        if (vals.length == 2) {
+        if (vals.length == 2 && vals[0].length > 4 && vals[1].length > 4) {
             videoId = vals[0];
             photoId = vals[1];
-            
+
+
             $("#videoId").val(videoId);
             $("#photoId").val(photoId);
-            
+
+            if ($("#player")[0].tagName.toLowerCase() == "iframe") {
+                $("#player").detach();
+                $("#settings").after($("<div id='player'></div>"));
+            }
+
             player = new YT.Player('player', {
                 height:'390',
                 width:'640',
                 videoId:videoId,
                 playerVars:{
-                    autoplay:true,
-                    loop:true
+                    autoplay:1,
+                    loop:1
                 }
             });
 
-            $image.addClass("loading");
-            
-            $.get("https://secure.flickr.com/services/rest/", {
-                method:"flickr.photos.getSizes",
-                api_key:"78106f6a05e0c39d487e3d11c7fc309b",
-                format:"json",
-                nojsoncallback:1,
-                photo_id:photoId
-            },function (resp) {
-                console.log(resp);
-                var sizes = resp.sizes.size;
-                var large = -1;
-                var large2x = -1;
-                for (var i = 0; i < sizes.length; i++) {
-                    if (sizes[i].label == "Large") {
-                        large = i;
-                    } else if (large > -1 && sizes[i].width == sizes[large].width * 2) {
-                        large2x = i;
+            if (image.src.indexOf(photoId) < 0) {
+
+                $image.addClass("loading");
+
+                $.get("https://secure.flickr.com/services/rest/", {
+                    method:"flickr.photos.getSizes",
+                    api_key:"78106f6a05e0c39d487e3d11c7fc309b",
+                    format:"json",
+                    nojsoncallback:1,
+                    photo_id:photoId
+                },function (resp) {
+                    console.log(resp);
+                    var sizes = resp.sizes.size;
+                    var large = -1;
+                    var large2x = -1;
+                    for (var i = 0; i < sizes.length; i++) {
+                        if (sizes[i].label == "Large") {
+                            large = i;
+                        } else if (large > -1 && sizes[i].width == sizes[large].width * 2) {
+                            large2x = i;
+                        }
                     }
-                }
 
 
-                //If we didn't find a large just grab the last one and hope
-                if (large == -1) large = sizes.length - 1;
+                    //If we didn't find a large just grab the last one and hope
+                    if (large == -1) large = sizes.length - 1;
 
-                image.width = sizes[large].width;
-                image.height = sizes[large].height;
+                    image.width = sizes[large].width;
+                    image.height = sizes[large].height;
 
-                //Load double size for hires screens
-                if (large2x > -1 && window.devicePixelRatio && window.devicePixelRatio > 1) {
-                    image.src = sizes[large2x].source;
-                } else {
-                    image.src = sizes[large].source;
-                }
+                    //Load double size for hires screens
+                    if (large2x > -1 && window.devicePixelRatio && window.devicePixelRatio > 1) {
+                        image.src = sizes[large2x].source;
+                    } else {
+                        image.src = sizes[large].source;
+                    }
 
-            }).error(function (resp) {
-                        console.error(resp);
-                    });
+                }).error(function (resp) {
+                            console.error(resp);
+                        });
 
+            }
         }
 
     }
-    
-    window.onload = function(){
+
+    window.onload = function () {
         window.onhashchange();
     }
 
@@ -168,11 +205,14 @@
         if (id = /https?:\/\/(www)?.youtube.com\/watch\?v=([^&]+)/i.exec(val)) {
             console.log(id);
             $("#videoId").val(id[2]);
+            videoId = id[2];
+            location.hash = videoId + "," + photoId;
         } else if (!/[/:\.]/.test(val)) {
+            console.log("Valid youtubeid");
             videoId = val;
             location.hash = videoId + "," + photoId;
         } else {
-            alert("Sorry, video must be a youtube url or video id");
+//            alert("Sorry, video must be a youtube url or video id");
         }
     });
 
@@ -182,12 +222,15 @@
         if (id = /https?:\/\/(www)?.flickr.com\/photos\/[a-z0-9]+\/([0-9]+)/i.exec(val)) {
             console.log(id);
             $("#photoId").val(id[2]);
+            photoId = id[2];
+            location.hash = videoId + "," + photoId;
         } else if (!/[^0-9]/.test(val)) {
+            console.log("Valid flickrid");
             //Flickr ids are numeric
             photoId = val;
             location.hash = videoId + "," + photoId;
         } else {
-            alert("Sorry, photo must be a flickr url or photo id");
+            //alert("Sorry, photo must be a flickr url or photo id");
         }
     });
 
@@ -214,7 +257,6 @@
     function onPlayerReady(e) {
 
     }
-
 
 
 </script>
