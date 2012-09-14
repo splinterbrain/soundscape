@@ -29,6 +29,10 @@
             -webkit-transition: opacity 1s ease;
             -moz-transition: opacity 1s ease;
         }
+        
+        #image:hover{
+            cursor: pointer;
+        }
 
         #image.loading {
             opacity: 0;
@@ -105,12 +109,16 @@
 <script type="text/javascript" src="jquery.1.8.1.min.js">
 </script>
 <script type="text/javascript">
-    var videoId = "", photoId = "";
+    var videoId = "", photoId = "", photoUrl = "";
 
     var image = document.getElementById("image");
     $image = $(image);
     image.onload = function () {
         $image.removeClass("loading");
+    }
+    
+    image.onclick = function(){
+        location.href = photoUrl;
     }
 
 
@@ -151,7 +159,7 @@
                     nojsoncallback:1,
                     photo_id:photoId
                 },function (resp) {
-                    console.log(resp);
+                    console.log(resp);                    
                     var sizes = resp.sizes.size;
                     var large = -1;
                     var large2x = -1;
@@ -176,6 +184,8 @@
                     } else {
                         image.src = sizes[large].source;
                     }
+                    
+                    photoUrl = sizes[large].url;
 
                 }).error(function (resp) {
                             console.error(resp);
@@ -242,16 +252,7 @@
     var player;
     function onYouTubeIframeAPIReady() {
         return;
-        console.log("API ready");
-        player = new YT.Player('player', {
-            height:'390',
-            width:'640',
-            videoId:'Zr_MJAOyOeU',
-            playerVars:{
-                autoplay:true,
-                loop:true
-            }
-        });
+
     }
 
     function onPlayerReady(e) {
