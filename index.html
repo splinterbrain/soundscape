@@ -1,0 +1,107 @@
+<!doctype html>
+<html>
+<head>
+    <!-- Everything inline for maximum possible loading speed -->
+    <style type="text/css">
+        body.dark {
+            background-color: black;
+            color: white;
+        }
+
+        #image {
+            display:block;
+            margin:0px auto;
+            opacity: 1;
+            -webkit-transition: opacity 1s ease;
+            -moz-transition: opacity 1s ease;
+        }
+
+        #image.loading {
+            opacity: 0;
+        }
+
+
+    </style>
+</head>
+<body>
+<iframe id="player"></iframe>
+<img id="image" class="loading">
+<script type="text/javascript" src="jquery.1.8.1.min.js">
+</script>
+<script type="text/javascript">
+    window.onhashchange = function () {
+        console.log("hash " + location.hash);
+
+    }
+
+    var tag = document.createElement('script');
+    tag.src = "//www.youtube.com/iframe_api";
+    var firstScriptTag = document.getElementsByTagName('script')[0];
+    firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
+    
+    var player;
+    function onYouTubeIframeAPIReady() {
+        console.log("API ready");
+        player = new YT.Player('player', {
+            height:'390',
+            width:'640',
+            videoId:'Zr_MJAOyOeU',
+            playerVars:{
+                autoplay:true,
+                loop:true
+            }
+        });
+    }
+
+    function onPlayerReady(e) {
+
+    }
+
+    var image = document.getElementById("image");
+    $image = $(image);
+    image.onload = function () {
+        $image.removeClass("loading");
+    }
+
+    $.get("https://secure.flickr.com/services/rest/", {
+        method:"flickr.photos.getSizes",
+        api_key:"78106f6a05e0c39d487e3d11c7fc309b",
+        format:"json",
+        nojsoncallback : 1,
+        photo_id:"7672838620"
+    }, function (resp) {        
+        console.log(resp);
+        var sizes = resp.sizes.size;
+        var large = -1;
+        var large2x = -1;
+        for(var i=0;i<sizes.length;i++){
+            if(sizes[i].label == "Large"){
+                large = i;
+            }else if(large > -1 && sizes[i].width == sizes[large].width*2){
+                large2x = i;
+            }
+        }
+        
+        
+        //If we didn't find a large just grab the last one and hope
+        if(large == -1) large = sizes.length-1;
+
+        image.width = sizes[large].width;
+        image.height = sizes[large].height;
+        
+        //Load double size for hires screens
+        if(large2x > -1 && window.devicePixelRatio && window.devicePixelRatio > 1){
+            image.src = sizes[large2x].source;
+        }else {
+            image.src = sizes[large].source;
+        }
+        
+    }).error(function(resp){
+                console.error(resp);
+            });
+
+//    image.src = "http://farm9.staticflickr.com/8161/7672838620_8cdfbd366d_k.jpg";
+
+</script>
+</body>
+</html>
