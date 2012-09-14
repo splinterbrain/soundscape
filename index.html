@@ -9,8 +9,8 @@
         }
 
         #image {
-            display:block;
-            margin:0px auto;
+            display: block;
+            margin: 0px auto;
             opacity: 1;
             -webkit-transition: opacity 1s ease;
             -moz-transition: opacity 1s ease;
@@ -20,27 +20,185 @@
             opacity: 0;
         }
 
+        #settings {
+            background-color: blue;
+            box-sizing: border-box;
+            -webkit-box-sizing: border-box;
+            -moz-box-sizing: border-box;
+            position: absolute;
+            top: 0px;
+            right: 5px;
+            background-color: blue;
+            padding: 5px;
+
+            -webkit-transition: top 0.5s ease;
+            -moz-transition: top 0.5s ease;
+        }
+
+        #settings:hover, #settings.focused {
+            top: 0px;
+        }
+
+        #settings:after {
+            content: '';
+            z-index: 1;
+            position: absolute;
+            box-sizing: border-box;
+            -webkit-box-sizing: border-box;
+            -moz-box-sizing: border-box;
+
+            bottom: -24px;
+            right: -1px;
+            width: 24px;
+            height: 24px;
+            background-color: blue;
+            border: 1px solid white;
+            border-top: 0px;
+            border-bottom-left-radius: 6px;
+            border-bottom-right-radius: 6px;
+        }
+
+        #settings > label {
+            margin: 5px;
+        }
+
 
     </style>
 </head>
 <body>
+<section id="settings">
+    <label for="videoId">Video</label>
+    <input type="text" id="videoId"/>
+    <label for="photoId">Photo</label>
+    <input type="text" id="photoId"/>
+</section>
 <iframe id="player"></iframe>
 <img id="image" class="loading">
 <script type="text/javascript" src="jquery.1.8.1.min.js">
 </script>
 <script type="text/javascript">
+    var videoId = "", photoId = "";
+
+    var image = document.getElementById("image");
+    $image = $(image);
+    image.onload = function () {
+        $image.removeClass("loading");
+    }
+
+
     window.onhashchange = function () {
         console.log("hash " + location.hash);
+        var vals = location.hash.substring(1).split(",");
+        if (vals.length == 2) {
+            videoId = vals[0];
+            photoId = vals[1];
+            
+            $("#videoId").val(videoId);
+            $("#photoId").val(photoId);
+            
+            player = new YT.Player('player', {
+                height:'390',
+                width:'640',
+                videoId:videoId,
+                playerVars:{
+                    autoplay:true,
+                    loop:true
+                }
+            });
+
+            $image.addClass("loading");
+            
+            $.get("https://secure.flickr.com/services/rest/", {
+                method:"flickr.photos.getSizes",
+                api_key:"78106f6a05e0c39d487e3d11c7fc309b",
+                format:"json",
+                nojsoncallback:1,
+                photo_id:photoId
+            },function (resp) {
+                console.log(resp);
+                var sizes = resp.sizes.size;
+                var large = -1;
+                var large2x = -1;
+                for (var i = 0; i < sizes.length; i++) {
+                    if (sizes[i].label == "Large") {
+                        large = i;
+                    } else if (large > -1 && sizes[i].width == sizes[large].width * 2) {
+                        large2x = i;
+                    }
+                }
+
+
+                //If we didn't find a large just grab the last one and hope
+                if (large == -1) large = sizes.length - 1;
+
+                image.width = sizes[large].width;
+                image.height = sizes[large].height;
+
+                //Load double size for hires screens
+                if (large2x > -1 && window.devicePixelRatio && window.devicePixelRatio > 1) {
+                    image.src = sizes[large2x].source;
+                } else {
+                    image.src = sizes[large].source;
+                }
+
+            }).error(function (resp) {
+                        console.error(resp);
+                    });
+
+        }
 
     }
+    
+    window.onload = function(){
+        window.onhashchange();
+    }
+
+    $("input").on("focus", function () {
+        $("#settings").addClass("focused");
+    });
+
+    $("input").on("blur", function () {
+        $("#settings").removeClass("focused");
+    });
+
+
+    $("#videoId").on("change keyup", function () {
+        var val = $("#videoId").val();
+        var id;
+        if (id = /https?:\/\/(www)?.youtube.com\/watch\?v=([^&]+)/i.exec(val)) {
+            console.log(id);
+            $("#videoId").val(id[2]);
+        } else if (!/[/:\.]/.test(val)) {
+            videoId = val;
+            location.hash = videoId + "," + photoId;
+        } else {
+            alert("Sorry, video must be a youtube url or video id");
+        }
+    });
+
+    $("#photoId").on("change keyup", function () {
+        var val = $("#photoId").val();
+        var id;
+        if (id = /https?:\/\/(www)?.flickr.com\/photos\/[a-z0-9]+\/([0-9]+)/i.exec(val)) {
+            console.log(id);
+            $("#photoId").val(id[2]);
+        } else if (!/[^0-9]/.test(val)) {
+            //Flickr ids are numeric
+            photoId = val;
+            location.hash = videoId + "," + photoId;
+        } else {
+            alert("Sorry, photo must be a flickr url or photo id");
+        }
+    });
 
     var tag = document.createElement('script');
     tag.src = "//www.youtube.com/iframe_api";
     var firstScriptTag = document.getElementsByTagName('script')[0];
     firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
-    
+
     var player;
     function onYouTubeIframeAPIReady() {
+        return;
         console.log("API ready");
         player = new YT.Player('player', {
             height:'390',
@@ -57,50 +215,7 @@
 
     }
 
-    var image = document.getElementById("image");
-    $image = $(image);
-    image.onload = function () {
-        $image.removeClass("loading");
-    }
 
-    $.get("https://secure.flickr.com/services/rest/", {
-        method:"flickr.photos.getSizes",
-        api_key:"78106f6a05e0c39d487e3d11c7fc309b",
-        format:"json",
-        nojsoncallback : 1,
-        photo_id:"7672838620"
-    }, function (resp) {        
-        console.log(resp);
-        var sizes = resp.sizes.size;
-        var large = -1;
-        var large2x = -1;
-        for(var i=0;i<sizes.length;i++){
-            if(sizes[i].label == "Large"){
-                large = i;
-            }else if(large > -1 && sizes[i].width == sizes[large].width*2){
-                large2x = i;
-            }
-        }
-        
-        
-        //If we didn't find a large just grab the last one and hope
-        if(large == -1) large = sizes.length-1;
-
-        image.width = sizes[large].width;
-        image.height = sizes[large].height;
-        
-        //Load double size for hires screens
-        if(large2x > -1 && window.devicePixelRatio && window.devicePixelRatio > 1){
-            image.src = sizes[large2x].source;
-        }else {
-            image.src = sizes[large].source;
-        }
-        
-    }).error(function(resp){
-                console.error(resp);
-            });
-
-//    image.src = "http://farm9.staticflickr.com/8161/7672838620_8cdfbd366d_k.jpg";
 
 </script>
 </body>
